@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake Game</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+  <h1>Snake Game</h1>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div id="gameOverScreen">
+      <h2>Game Over!</h2>
+      <button onclick="restartGame()">Restart</button>
+    </div>
+  </div>
+  <div id="info">
+    <div id="score">Score: 0</div>
+    <div id="instructions">Use arrow keys to move the snake. Eat the red orbs to grow! Press P to pause/resume.</div>
+    <button id="pauseButton" onclick="togglePause()">Pause</button>
+  </div>
+  <div id="welcomePopup">
+    <div class="popup-content">
+      <h2>Enjoy the Snake Game!<br>Created by Ashraf Shaik</h2>
+      <button onclick="closePopup()">Start Playing</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
