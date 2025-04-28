@@ -5,8 +5,8 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 const pauseButton = document.getElementById('pauseButton');
 const welcomePopup = document.getElementById('welcomePopup');
 
-const gridSize = 20;
-const tileCount = canvas.width / gridSize;
+let gridSize = 20; // Will be recalculated dynamically
+let tileCount = 20; // Will be recalculated dynamically
 let snake = [
   { x: 10, y: 10 }
 ];
@@ -51,6 +51,31 @@ function closePopup() {
   }, 500); // Match animation duration
 }
 
+function resizeCanvas() {
+  const container = document.getElementById('gameContainer');
+  const maxWidth = Math.min(window.innerWidth - 20, window.innerHeight - 200, 500);
+  
+  // Set the CSS size
+  canvas.style.width = `${maxWidth}px`;
+  canvas.style.height = `${maxWidth}px`;
+  
+  // Set the internal drawing resolution to match CSS size
+  canvas.width = maxWidth;
+  canvas.height = maxWidth;
+  
+  // Recalculate gridSize and tileCount
+  tileCount = 20; // Fixed number of tiles
+  gridSize = maxWidth / tileCount; // Adjust gridSize to fit canvas
+  
+  // Adjust snake and food positions to stay within new grid
+  snake = snake.map(segment => ({
+    x: Math.min(segment.x, tileCount - 1),
+    y: Math.min(segment.y, tileCount - 1)
+  }));
+  food.x = Math.min(food.x, tileCount - 1);
+  food.y = Math.min(food.y, tileCount - 1);
+}
+
 function drawGame() {
   // Clear canvas
   ctx.fillStyle = '#222';
@@ -72,7 +97,7 @@ function drawGame() {
   // If paused, show pause message and skip game logic
   if (isPaused) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = '30px Arial';
+    ctx.font = `${gridSize}px Arial`; // Scale font size with grid
     ctx.textAlign = 'center';
     ctx.fillText('Paused', canvas.width / 2, canvas.height / 2);
     return;
@@ -171,6 +196,7 @@ function restartGame() {
   gameLoop = setInterval(drawGame, gameSpeed);
 }
 
+// Keyboard controls
 document.addEventListener('keydown', e => {
   if (e.key === 'p' || e.key === 'P') {
     togglePause();
@@ -191,3 +217,52 @@ document.addEventListener('keydown', e => {
     }
   }
 });
+
+// Touch controls for mobile
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (!isPaused && gameOverScreen.style.display !== 'flex' && welcomePopup.style.display !== 'flex') {
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+
+    // Determine swipe direction
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      // Horizontal swipe
+      if (deltaX > 30 && dx === 0) { // Swipe right
+        dx = 1;
+        dy = 0;
+      } else if (deltaX < -30 && dx === 0) { // Swipe left
+        dx = -1;
+        dy = 0;
+      }
+    } else {
+      // Vertical swipe
+      if (deltaY > 30 && dy === 0) { // Swipe down
+        dx = 0;
+        dy = 1;
+      } else if (deltaY < -30 && dy === 0) { // Swipe up
+        dx = 0;
+        dy = -1;
+      }
+    }
+
+    // Update touch start position to prevent repeated swipes
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+  }
+});
+
+// Initialize canvas size and listen for resize events
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas(); // Initial resize
