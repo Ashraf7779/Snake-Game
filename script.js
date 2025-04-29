@@ -14,9 +14,10 @@ let food = { x: 15, y: 15 };
 let dx = 0;
 let dy = 0;
 let score = 0;
-let gameSpeed = 200; // Very slow initial speed (ms per frame)
-const minSpeed = 50; // Fastest speed (ms per frame)
-const speedIncrement = 5; // Decrease interval by 5ms per food
+let gameSpeed = 200; // Initial slow speed (ms per frame)
+const minSpeed = 50; // Minimum speed (fastest)
+const maxSpeed = 10; // Maximum speed (fastest practical limit)
+const speedIncrement = 2; // Smaller increment for gradual increase
 let gameLoop;
 let isPaused = true; // Start paused until pop-up is closed
 
@@ -53,7 +54,11 @@ function closePopup() {
 
 function resizeCanvas() {
   const container = document.getElementById('gameContainer');
-  const maxWidth = Math.min(window.innerWidth - 20, window.innerHeight - 200, 500);
+  const maxWidth = Math.min(window.innerWidth - 20, window.innerHeight - 200, 600);
+  
+  // Set the container and canvas size
+  container.style.width = `${maxWidth}px`;
+  container.style.height = `${maxWidth}px`;
   
   // Set the CSS size
   canvas.style.width = `${maxWidth}px`;
@@ -97,7 +102,7 @@ function drawGame() {
   // If paused, show pause message and skip game logic
   if (isPaused) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = `${gridSize}px Arial`; // Scale font size with grid
+    ctx.font = `${gridSize * 1.5}px Arial`; // Scale font size with grid
     ctx.textAlign = 'center';
     ctx.fillText('Paused', canvas.width / 2, canvas.height / 2);
     return;
@@ -117,10 +122,12 @@ function drawGame() {
     score += 10;
     scoreDisplay.textContent = `Score: ${score}`;
     generateFood();
-    // Increase speed (decrease interval)
-    gameSpeed = Math.max(minSpeed, gameSpeed - speedIncrement);
-    clearInterval(gameLoop);
-    gameLoop = setInterval(drawGame, gameSpeed);
+    // Gradually increase speed
+    if (gameSpeed > maxSpeed) {
+      gameSpeed = Math.max(maxSpeed, gameSpeed - speedIncrement);
+      clearInterval(gameLoop);
+      gameLoop = setInterval(drawGame, gameSpeed);
+    }
   } else {
     snake.pop();
   }
@@ -187,7 +194,7 @@ function restartGame() {
   dx = 0;
   dy = 0;
   score = 0;
-  gameSpeed = 200; // Very slow speed
+  gameSpeed = 200; // Reset to initial slow speed
   isPaused = false;
   scoreDisplay.textContent = `Score: ${score}`;
   gameOverScreen.style.display = 'none';
