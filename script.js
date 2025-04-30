@@ -57,7 +57,7 @@ function resizeCanvas() {
   const availableHeight = window.innerHeight - 100;
   let maxWidth;
 
-  if (window.innerWidth <= 600) {
+  if (window.innerWidth <= 768) {
     maxWidth = Math.min(availableWidth, availableHeight) * 0.95;
   } else {
     maxWidth = Math.min(availableWidth, availableHeight, 600) * 0.9;
@@ -82,9 +82,7 @@ function resizeCanvas() {
 }
 
 function updateSpeed() {
-  // Calculate number of red balls eaten (score / 10)
   const redBallsEaten = score / 10;
-  // Speed increases (gameSpeed decreases) with each red ball eaten
   const newSpeed = Math.max(maxSpeed, initialSpeed - redBallsEaten * speedIncrement);
   if (newSpeed !== gameSpeed) {
     gameSpeed = newSpeed;
@@ -128,7 +126,6 @@ function drawGame() {
     score += 10;
     scoreDisplay.textContent = `Score: ${score}`;
     generateFood();
-    // Update speed after eating a red ball
     updateSpeed();
   } else {
     snake.pop();
@@ -193,7 +190,7 @@ function restartGame() {
   dx = 0;
   dy = 0;
   score = 0;
-  gameSpeed = initialSpeed; // Reset speed
+  gameSpeed = initialSpeed;
   isPaused = false;
   scoreDisplay.textContent = `Score: ${score}`;
   gameOverScreen.style.display = 'none';
@@ -225,8 +222,8 @@ document.addEventListener('keydown', e => {
 });
 
 // Touch controls for mobile (in controlArea)
-let touchStartX = 0;
-let touchStartY = 0;
+let touchStartX = null;
+let touchStartY = null;
 
 controlArea.addEventListener('touchstart', (e) => {
   e.preventDefault();
@@ -237,32 +234,43 @@ controlArea.addEventListener('touchstart', (e) => {
 
 controlArea.addEventListener('touchmove', (e) => {
   e.preventDefault();
+  if (touchStartX === null || touchStartY === null) return;
+
   if (!isPaused && gameOverScreen.style.display !== 'flex' && welcomePopup.style.display !== 'flex') {
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
 
+    // Only process swipe if the movement is significant
+    const swipeThreshold = 20; // Reduced threshold for better responsiveness
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      if (deltaX > 30 && dx === 0) {
+      if (deltaX > swipeThreshold && dx === 0) {
         dx = 1;
         dy = 0;
-      } else if (deltaX < -30 && dx === 0) {
+      } else if (deltaX < -swipeThreshold && dx === 0) {
         dx = -1;
         dy = 0;
       }
     } else {
-      if (deltaY > 30 && dy === 0) {
+      if (deltaY > swipeThreshold && dy === 0) {
         dx = 0;
         dy = 1;
-      } else if (deltaY < -30 && dy === 0) {
+      } else if (deltaY < -swipeThreshold && dy === 0) {
         dx = 0;
         dy = -1;
       }
     }
 
+    // Reset touch start position after a swipe to prevent continuous movement
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
   }
+});
+
+controlArea.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  touchStartX = null;
+  touchStartY = null;
 });
 
 // Initialize canvas size and listen for resize events
