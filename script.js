@@ -4,9 +4,10 @@ const scoreDisplay = document.getElementById('score');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const pauseButton = document.getElementById('pauseButton');
 const welcomePopup = document.getElementById('welcomePopup');
+const controlArea = document.getElementById('controlArea');
 
-let gridSize = 20; // Will be recalculated dynamically
-let tileCount = 20; // Will be recalculated dynamically
+let gridSize = 20;
+let tileCount = 20;
 let snake = [
   { x: 10, y: 10 }
 ];
@@ -15,11 +16,11 @@ let dx = 0;
 let dy = 0;
 let score = 0;
 let gameSpeed = 200; // Initial slow speed (ms per frame)
-const minSpeed = 50; // Minimum speed (fastest)
+const initialSpeed = 200; // Store initial speed for reset
 const maxSpeed = 10; // Maximum speed (fastest practical limit)
-const speedIncrement = 2; // Smaller increment for gradual increase
+const speedIncrement = 5; // Speed decreases by this factor per red ball eaten
 let gameLoop;
-let isPaused = true; // Start paused until pop-up is closed
+let isPaused = true;
 
 // Trigger confetti when popup appears
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,16 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
     spread: 80,
     origin: { y: 0.5 },
     colors: ['#e74c3c', '#2ecc71', '#3498db', '#f1c40f'],
-    zIndex: 1001 // Ensure confetti appears above popup
+    zIndex: 1001
   });
 });
 
 // Load snake skin image
 const snakeSkin = new Image();
-snakeSkin.src = 'snake-skin.png'; // Replace with your image path or URL
-snakeSkin.onload = () => {
-  // Wait for pop-up to close before starting game
-};
+snakeSkin.src = 'snake-skin.png';
+snakeSkin.onload = () => {};
 snakeSkin.onerror = () => {
   console.error('Failed to load snake skin image. Using fallback color.');
 };
@@ -49,30 +48,31 @@ function closePopup() {
     popup.style.display = 'none';
     isPaused = false;
     gameLoop = setInterval(drawGame, gameSpeed);
-  }, 500); // Match animation duration
+  }, 500);
 }
 
 function resizeCanvas() {
   const container = document.getElementById('gameContainer');
-  const maxWidth = Math.min(window.innerWidth - 20, window.innerHeight - 200, 600);
-  
-  // Set the container and canvas size
+  const availableWidth = window.innerWidth - 20;
+  const availableHeight = window.innerHeight - 100;
+  let maxWidth;
+
+  if (window.innerWidth <= 600) {
+    maxWidth = Math.min(availableWidth, availableHeight) * 0.95;
+  } else {
+    maxWidth = Math.min(availableWidth, availableHeight, 600) * 0.9;
+  }
+
   container.style.width = `${maxWidth}px`;
   container.style.height = `${maxWidth}px`;
-  
-  // Set the CSS size
   canvas.style.width = `${maxWidth}px`;
   canvas.style.height = `${maxWidth}px`;
-  
-  // Set the internal drawing resolution to match CSS size
   canvas.width = maxWidth;
   canvas.height = maxWidth;
-  
-  // Recalculate gridSize and tileCount
-  tileCount = 20; // Fixed number of tiles
-  gridSize = maxWidth / tileCount; // Adjust gridSize to fit canvas
-  
-  // Adjust snake and food positions to stay within new grid
+
+  tileCount = 20;
+  gridSize = maxWidth / tileCount;
+
   snake = snake.map(segment => ({
     x: Math.min(segment.x, tileCount - 1),
     y: Math.min(segment.y, tileCount - 1)
@@ -81,12 +81,22 @@ function resizeCanvas() {
   food.y = Math.min(food.y, tileCount - 1);
 }
 
+function updateSpeed() {
+  // Calculate number of red balls eaten (score / 10)
+  const redBallsEaten = score / 10;
+  // Speed increases (gameSpeed decreases) with each red ball eaten
+  const newSpeed = Math.max(maxSpeed, initialSpeed - redBallsEaten * speedIncrement);
+  if (newSpeed !== gameSpeed) {
+    gameSpeed = newSpeed;
+    clearInterval(gameLoop);
+    gameLoop = setInterval(drawGame, gameSpeed);
+  }
+}
+
 function drawGame() {
-  // Clear canvas
   ctx.fillStyle = '#222';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw grid
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
   for (let i = 0; i < tileCount; i++) {
     ctx.beginPath();
@@ -99,46 +109,36 @@ function drawGame() {
     ctx.stroke();
   }
 
-  // If paused, show pause message and skip game logic
   if (isPaused) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.font = `${gridSize * 1.5}px Arial`; // Scale font size with grid
+    ctx.font = `${gridSize * 1.5}px Arial`;
     ctx.textAlign = 'center';
     ctx.fillText('Paused', canvas.width / 2, canvas.height / 2);
     return;
   }
 
-  // Move snake with wrap-around
   let head = { x: snake[0].x + dx, y: snake[0].y + dy };
-  // Wrap around edges
   if (head.x < 0) head.x = tileCount - 1;
   if (head.x >= tileCount) head.x = 0;
   if (head.y < 0) head.y = tileCount - 1;
   if (head.y >= tileCount) head.y = 0;
   snake.unshift(head);
 
-  // Check if snake ate food
   if (head.x === food.x && head.y === food.y) {
     score += 10;
     scoreDisplay.textContent = `Score: ${score}`;
     generateFood();
-    // Gradually increase speed
-    if (gameSpeed > maxSpeed) {
-      gameSpeed = Math.max(maxSpeed, gameSpeed - speedIncrement);
-      clearInterval(gameLoop);
-      gameLoop = setInterval(drawGame, gameSpeed);
-    }
+    // Update speed after eating a red ball
+    updateSpeed();
   } else {
     snake.pop();
   }
 
-  // Check self-collision
   if (snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)) {
     endGame();
     return;
   }
 
-  // Draw snake with snake skin image
   snake.forEach(segment => {
     if (snakeSkin.complete && snakeSkin.naturalWidth !== 0) {
       ctx.drawImage(snakeSkin, segment.x * gridSize + 2, segment.y * gridSize + 2, gridSize - 4, gridSize - 4);
@@ -153,7 +153,6 @@ function drawGame() {
     }
   });
 
-  // Draw food as glowing orb
   ctx.beginPath();
   ctx.arc(food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2, gridSize / 2 - 2, 0, Math.PI * 2);
   ctx.fillStyle = '#e74c3c';
@@ -177,7 +176,7 @@ function endGame() {
 }
 
 function togglePause() {
-  if (gameOverScreen.style.display === 'flex' || welcomePopup.style.display === 'flex') return; // Don't pause during game over or pop-up
+  if (gameOverScreen.style.display === 'flex' || welcomePopup.style.display === 'flex') return;
   isPaused = !isPaused;
   if (isPaused) {
     clearInterval(gameLoop);
@@ -194,7 +193,7 @@ function restartGame() {
   dx = 0;
   dy = 0;
   score = 0;
-  gameSpeed = 200; // Reset to initial slow speed
+  gameSpeed = initialSpeed; // Reset speed
   isPaused = false;
   scoreDisplay.textContent = `Score: ${score}`;
   gameOverScreen.style.display = 'none';
@@ -225,46 +224,42 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Touch controls for mobile
+// Touch controls for mobile (in controlArea)
 let touchStartX = 0;
 let touchStartY = 0;
 
-canvas.addEventListener('touchstart', (e) => {
+controlArea.addEventListener('touchstart', (e) => {
   e.preventDefault();
   const touch = e.touches[0];
   touchStartX = touch.clientX;
   touchStartY = touch.clientY;
 });
 
-canvas.addEventListener('touchmove', (e) => {
+controlArea.addEventListener('touchmove', (e) => {
   e.preventDefault();
   if (!isPaused && gameOverScreen.style.display !== 'flex' && welcomePopup.style.display !== 'flex') {
     const touch = e.touches[0];
     const deltaX = touch.clientX - touchStartX;
     const deltaY = touch.clientY - touchStartY;
 
-    // Determine swipe direction
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Horizontal swipe
-      if (deltaX > 30 && dx === 0) { // Swipe right
+      if (deltaX > 30 && dx === 0) {
         dx = 1;
         dy = 0;
-      } else if (deltaX < -30 && dx === 0) { // Swipe left
+      } else if (deltaX < -30 && dx === 0) {
         dx = -1;
         dy = 0;
       }
     } else {
-      // Vertical swipe
-      if (deltaY > 30 && dy === 0) { // Swipe down
+      if (deltaY > 30 && dy === 0) {
         dx = 0;
         dy = 1;
-      } else if (deltaY < -30 && dy === 0) { // Swipe up
+      } else if (deltaY < -30 && dy === 0) {
         dx = 0;
         dy = -1;
       }
     }
 
-    // Update touch start position to prevent repeated swipes
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
   }
@@ -272,4 +267,4 @@ canvas.addEventListener('touchmove', (e) => {
 
 // Initialize canvas size and listen for resize events
 window.addEventListener('resize', resizeCanvas);
-resizeCanvas(); // Initial resize
+resizeCanvas();
